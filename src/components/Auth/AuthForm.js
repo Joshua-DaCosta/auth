@@ -1,37 +1,47 @@
-import React, { useContext, useState } from 'react';
-import { signIn, signUp } from '../../api/authCalls';
-import { AuthContext } from '../../store/AuthProvider';
-import classes from './AuthForm.module.css';
+import React, { useContext, useState } from "react";
+import { useHistory } from "react-router-dom";
+import { signIn, signUp } from "../../api/authCalls";
+import { AuthContext } from "../../store/AuthProvider";
+import classes from "./AuthForm.module.css";
 
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
   const authCtx = useContext(AuthContext);
+  const history = useHistory();
 
   const switchAuthModeHandler = () => {
     setIsLogin((prevState) => !prevState);
   };
 
   function resetForm() {
-    setEmail('');
-    setPass('');
+    setEmail("");
+    setPass("");
   }
-
 
   const submitHandler = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    if(isLogin){
-      const {idToken} = await signIn(email, pass);
-      authCtx.login(idToken);
-    }else{
-      await signUp(email, pass);
+    if (isLogin) {
+      const res = await signIn(email, pass);
+      setIsLoading(false);
       resetForm();
+      if (!res) return;
+      const expirationTime = new Date(
+        new Date().getTime() + +res.expiresIn * 1000
+      );
+      authCtx.login(res.idToken, expirationTime.toISOString());
+      history.replace("/");
+    } else {
+      const res = await signUp(email, pass);
+      resetForm();
+      setIsLoading(false);
+      if (!res) return;
+      history.replace("/");
     }
-    setIsLoading(false);
-  }
+  };
 
   return (
     <section className={classes.auth}>
@@ -79,7 +89,6 @@ const AuthForm = () => {
       </form>
     </section>
   );
-}
-
+};
 
 export default AuthForm;
